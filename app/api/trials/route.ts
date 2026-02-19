@@ -59,8 +59,13 @@ export async function GET(request: NextRequest) {
 
     const query = `
       SELECT *
-      FROM REPORTING.GENERAL.FACT_TRIAL_ANALYSIS
-      ${whereClause}
+      FROM (
+        SELECT *,
+               ROW_NUMBER() OVER (PARTITION BY ORG_ID ORDER BY ANALYSIS_DATE DESC) as rn
+        FROM REPORTING.GENERAL.FACT_TRIAL_ANALYSIS
+        ${whereClause}
+      ) subquery
+      WHERE rn = 1
       ORDER BY ANALYSIS_DATE DESC
       LIMIT ${limit}
       OFFSET ${offset}
@@ -80,11 +85,16 @@ export async function GET(request: NextRequest) {
       });
     });
 
-    // Get total count for pagination
+    // Get total count for pagination (deduplicated by org_id)
     const countQuery = `
       SELECT COUNT(*) as TOTAL
-      FROM REPORTING.GENERAL.FACT_TRIAL_ANALYSIS
-      ${whereClause}
+      FROM (
+        SELECT ORG_ID,
+               ROW_NUMBER() OVER (PARTITION BY ORG_ID ORDER BY ANALYSIS_DATE DESC) as rn
+        FROM REPORTING.GENERAL.FACT_TRIAL_ANALYSIS
+        ${whereClause}
+      ) subquery
+      WHERE rn = 1
     `;
 
     const countRows = await new Promise<any[]>((resolve, reject) => {

@@ -586,7 +586,7 @@ export default function Home() {
                           {selectedTrial.PRIMARY_VALUE_MOMENT_DESCRIPTION}
                         </p>
                         <div className="pt-2 border-t border-purple-100">
-                          <p className="text-xs text-gray-600">
+                          <p className="text-sm text-gray-600">
                             <strong>Evidence:</strong> {selectedTrial.PRIMARY_VALUE_MOMENT_SUPPORTING_EVIDENCE}
                           </p>
                         </div>
