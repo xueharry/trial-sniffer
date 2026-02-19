@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import snowflake from 'snowflake-sdk';
+import { getConnection, clearCachedConnection } from '@/lib/snowflake';
 
 // Type definition for trial data
 export interface TrialAnalysis {
@@ -14,38 +14,6 @@ export interface TrialAnalysis {
   CONFIDENCE_SCORE: number;
   MODEL_USED: string;
   DAG_RUN_ID: string;
-}
-
-// Cache the Snowflake connection to avoid re-authentication
-let cachedConnection: any = null;
-
-async function getConnection() {
-  if (cachedConnection && cachedConnection.isUp()) {
-    return cachedConnection;
-  }
-
-  // Create new connection if none exists or connection is down
-  const connection = snowflake.createConnection({
-    account: process.env.SNOWFLAKE_ACCOUNT!,
-    username: process.env.SNOWFLAKE_USER!,
-    authenticator: 'EXTERNALBROWSER',
-    warehouse: process.env.SNOWFLAKE_WAREHOUSE,
-    database: process.env.SNOWFLAKE_DATABASE || 'REPORTING',
-    schema: 'GENERAL',
-  });
-
-  await new Promise<void>((resolve, reject) => {
-    connection.connectAsync((err, conn) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve();
-      }
-    });
-  });
-
-  cachedConnection = connection;
-  return connection;
 }
 
 export async function GET(request: NextRequest) {
@@ -146,7 +114,7 @@ export async function GET(request: NextRequest) {
 
     // If authentication fails, clear the cached connection
     if (err.code === '390144' || err.message?.includes('authentication')) {
-      cachedConnection = null;
+      clearCachedConnection();
     }
 
     return NextResponse.json(

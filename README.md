@@ -33,7 +33,7 @@ A modern Next.js web application for sniffing out insights from Datadog trial co
    SNOWFLAKE_ACCOUNT=sza96462.us-east-1
    SNOWFLAKE_USER=harry.xue@datadoghq.com
    SNOWFLAKE_DATABASE=REPORTING
-   SNOWFLAKE_WAREHOUSE=AD_HOC_DEVELOPMENT_XSMALL_WAREHOUSE
+   SNOWFLAKE_WAREHOUSE=AD_HOC_DEVELOPMENT_SMALL_WAREHOUSE
    ```
 
    **Note**: This app uses **external browser authentication** (SSO). When you first start the app and make a query, a browser window will open for you to authenticate via Okta. After authentication, the session will be cached.
@@ -156,7 +156,7 @@ If you get Snowflake connection errors:
 1. Verify your user email in `.env.local` is correct (`your.name@datadoghq.com`)
 2. Check that your account identifier is `sza96462.us-east-1`
 3. Ensure your user has access to the `REPORTING.GENERAL.FACT_TRIAL_ANALYSIS` table
-4. Verify the warehouse name is `AD_HOC_DEVELOPMENT_XSMALL_WAREHOUSE`
+4. Verify the warehouse name is `AD_HOC_DEVELOPMENT_SMALL_WAREHOUSE`
 5. Check the dev server console for detailed error messages
 
 ### Module Not Found Errors

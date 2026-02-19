@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, ChevronLeft, ChevronRight, Copy, Check, Info } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Copy, Check, Info } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { Tooltip } from '@/components/ui/tooltip';
+import { OrgDataPanel } from '@/components/org-data-panel';
 import {
   Dialog,
   DialogContent,
@@ -51,6 +52,9 @@ export default function Home() {
   const [selectedTrial, setSelectedTrial] = useState<TrialAnalysis | null>(null);
   const [selectedTrialIndex, setSelectedTrialIndex] = useState<number>(-1);
   const [copiedOrgId, setCopiedOrgId] = useState<number | null>(null);
+  const [orgData, setOrgData] = useState<any>(null);
+  const [orgDataLoading, setOrgDataLoading] = useState(false);
+  const [orgDataCache, setOrgDataCache] = useState<Map<number, any>>(new Map());
 
   // Filters
   const [orgId, setOrgId] = useState('');
@@ -118,6 +122,7 @@ export default function Home() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedTrial, selectedTrialIndex, trials]);
 
   const handleSearch = () => {
@@ -156,24 +161,57 @@ export default function Home() {
     setTimeout(() => setCopiedOrgId(null), 2000);
   };
 
+  const fetchOrgData = async (orgId: number) => {
+    // Check cache first
+    if (orgDataCache.has(orgId)) {
+      setOrgData(orgDataCache.get(orgId));
+      return;
+    }
+
+    setOrgDataLoading(true);
+    setOrgData(null);
+
+    try {
+      const response = await fetch(`/api/org-data/${orgId}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch org data');
+      }
+      const data = await response.json();
+      setOrgData(data);
+
+      // Cache the result
+      setOrgDataCache(new Map(orgDataCache.set(orgId, data)));
+    } catch (err) {
+      console.error('Error fetching org data:', err);
+      setOrgData({ error: 'Failed to load org data' });
+    } finally {
+      setOrgDataLoading(false);
+    }
+  };
+
   const handleTrialClick = (trial: TrialAnalysis, index: number) => {
     setSelectedTrial(trial);
     setSelectedTrialIndex(index);
+    fetchOrgData(trial.ORG_ID);
   };
 
   const handleNextTrial = () => {
     if (selectedTrialIndex < trials.length - 1) {
       const newIndex = selectedTrialIndex + 1;
-      setSelectedTrial(trials[newIndex]);
+      const newTrial = trials[newIndex];
+      setSelectedTrial(newTrial);
       setSelectedTrialIndex(newIndex);
+      fetchOrgData(newTrial.ORG_ID);
     }
   };
 
   const handlePrevTrial = () => {
     if (selectedTrialIndex > 0) {
       const newIndex = selectedTrialIndex - 1;
-      setSelectedTrial(trials[newIndex]);
+      const newTrial = trials[newIndex];
+      setSelectedTrial(newTrial);
       setSelectedTrialIndex(newIndex);
+      fetchOrgData(newTrial.ORG_ID);
     }
   };
 
@@ -441,6 +479,15 @@ export default function Home() {
         {!loading && !error && totalPages > 1 && (
           <div className="mt-6 flex items-center justify-center gap-2">
             <Button
+              onClick={() => setPage(1)}
+              disabled={page === 1}
+              variant="outline"
+              size="sm"
+            >
+              <ChevronsLeft className="w-4 h-4 mr-1" />
+              First
+            </Button>
+            <Button
               onClick={() => setPage(Math.max(1, page - 1))}
               disabled={page === 1}
               variant="outline"
@@ -461,6 +508,15 @@ export default function Home() {
               Next
               <ChevronRight className="w-4 h-4 ml-1" />
             </Button>
+            <Button
+              onClick={() => setPage(totalPages)}
+              disabled={page === totalPages}
+              variant="outline"
+              size="sm"
+            >
+              Last
+              <ChevronsRight className="w-4 h-4 ml-1" />
+            </Button>
           </div>
         )}
 
@@ -468,29 +524,11 @@ export default function Home() {
         <Dialog open={!!selectedTrial} onOpenChange={(open) => !open && handleCloseModal()}>
           {selectedTrial && (
             <DialogContent onClose={handleCloseModal}>
-              <DialogHeader>
+              {/* Header - spans full width */}
+              <div className="p-6 pb-4 border-b border-gray-200 pr-16">
                 <div className="flex items-center justify-between mb-2">
-                  <DialogTitle className="flex items-center gap-2">
-                    <span>Trial Analysis: Org</span>
-                    <a
-                      href={`https://supportdog.us1.prod.dog/accounts/org?detail_tab=details&org=${selectedTrial.ORG_ID}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-datadog-purple hover:text-datadog-purple-dark hover:underline"
-                    >
-                      {selectedTrial.ORG_ID}
-                    </a>
-                    <button
-                      onClick={(e) => copyOrgId(selectedTrial.ORG_ID, e)}
-                      className="text-gray-400 hover:text-datadog-purple transition-colors"
-                      title="Copy Org ID"
-                    >
-                      {copiedOrgId === selectedTrial.ORG_ID ? (
-                        <Check className="w-4 h-4 text-green-600" />
-                      ) : (
-                        <Copy className="w-4 h-4" />
-                      )}
-                    </button>
+                  <DialogTitle className="text-lg font-semibold leading-none tracking-tight">
+                    Trial Analysis
                   </DialogTitle>
                   <div className="flex items-center gap-2">
                     <Button
@@ -520,68 +558,82 @@ export default function Home() {
                   Analysis Date: {new Date(selectedTrial.ANALYSIS_DATE).toLocaleDateString()} •
                   Confidence: {(selectedTrial.CONFIDENCE_SCORE * 100).toFixed(0)}%
                 </DialogDescription>
-              </DialogHeader>
+              </div>
 
-              <div className="space-y-6 mt-4">
-                {/* Trial Summary */}
-                <div>
-                  <h4 className="text-sm font-semibold text-gray-900 mb-2">Trial Summary</h4>
-                  <p className="text-sm text-gray-700 leading-relaxed">
-                    {selectedTrial.TRIAL_SUMMARY}
-                  </p>
-                </div>
-
-                {/* Primary Value Moment */}
-                <div>
-                  <h4 className="text-sm font-semibold text-gray-900 mb-2">
-                    Primary Value Moment
-                  </h4>
-                  <div className="bg-purple-50 rounded-lg p-4 space-y-3">
+              {/* Two-column layout */}
+              <div className="flex flex-1 overflow-hidden">
+                {/* Left Column - Trial Summary */}
+                <div className="w-2/5 p-6 overflow-y-auto">
+                  <div className="space-y-6">
+                    {/* Trial Summary */}
                     <div>
-                      <Badge variant="default">{selectedTrial.PRIMARY_VALUE_MOMENT_PRODUCT_AREA}</Badge>
-                    </div>
-                    <p className="text-sm text-gray-700">
-                      {selectedTrial.PRIMARY_VALUE_MOMENT_DESCRIPTION}
-                    </p>
-                    <div className="pt-2 border-t border-purple-100">
-                      <p className="text-xs text-gray-600">
-                        <strong>Evidence:</strong> {selectedTrial.PRIMARY_VALUE_MOMENT_SUPPORTING_EVIDENCE}
+                      <h4 className="text-sm font-semibold text-gray-900 mb-2">Trial Summary</h4>
+                      <p className="text-sm text-gray-700 leading-relaxed">
+                        {selectedTrial.TRIAL_SUMMARY}
                       </p>
                     </div>
+
+                    {/* Primary Value Moment */}
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-900 mb-2">
+                        Primary Value Moment
+                      </h4>
+                      <div className="bg-purple-50 rounded-lg p-4 space-y-3">
+                        <div>
+                          <Badge variant="default">{selectedTrial.PRIMARY_VALUE_MOMENT_PRODUCT_AREA}</Badge>
+                        </div>
+                        <p className="text-sm text-gray-700">
+                          {selectedTrial.PRIMARY_VALUE_MOMENT_DESCRIPTION}
+                        </p>
+                        <div className="pt-2 border-t border-purple-100">
+                          <p className="text-xs text-gray-600">
+                            <strong>Evidence:</strong> {selectedTrial.PRIMARY_VALUE_MOMENT_SUPPORTING_EVIDENCE}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Areas of Focus */}
+                    {(() => {
+                      const areasOfFocus = parseAreasOfFocus(selectedTrial.AREAS_OF_FOCUS_ACTIONS);
+                      return areasOfFocus ? (
+                        <div>
+                          <h4 className="text-sm font-semibold text-gray-900 mb-2">
+                            Areas of Focus & Actions
+                          </h4>
+                          <div className="space-y-3">
+                            {Object.entries(areasOfFocus).map(([key, value]) => (
+                              <div key={key} className="bg-gray-50 rounded-lg p-4">
+                                <p className="text-sm font-medium text-gray-900 mb-1">{key}</p>
+                                <p className="text-sm text-gray-600">{value as string}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null;
+                    })()}
+
+                    {/* Metadata */}
+                    <div className="pt-4 border-t border-gray-200">
+                      <div className="space-y-1 text-xs text-gray-500">
+                        <div>
+                          <span className="font-medium">Model:</span> {selectedTrial.MODEL_USED}
+                        </div>
+                        <div>
+                          <span className="font-medium">Timestamp:</span>{' '}
+                          {new Date(selectedTrial.ANALYSIS_TIMESTAMP).toLocaleString()}
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                {/* Areas of Focus */}
-                {(() => {
-                  const areasOfFocus = parseAreasOfFocus(selectedTrial.AREAS_OF_FOCUS_ACTIONS);
-                  return areasOfFocus ? (
-                    <div>
-                      <h4 className="text-sm font-semibold text-gray-900 mb-2">
-                        Areas of Focus & Actions
-                      </h4>
-                      <div className="space-y-3">
-                        {Object.entries(areasOfFocus).map(([key, value]) => (
-                          <div key={key} className="bg-gray-50 rounded-lg p-4">
-                            <p className="text-sm font-medium text-gray-900 mb-1">{key}</p>
-                            <p className="text-sm text-gray-600">{value as string}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null;
-                })()}
+                {/* Vertical Divider */}
+                <div className="w-px bg-gray-200 flex-shrink-0"></div>
 
-                {/* Metadata */}
-                <div className="pt-4 border-t border-gray-200">
-                  <div className="grid grid-cols-2 gap-4 text-xs text-gray-500">
-                    <div>
-                      <span className="font-medium">Model:</span> {selectedTrial.MODEL_USED}
-                    </div>
-                    <div>
-                      <span className="font-medium">Timestamp:</span>{' '}
-                      {new Date(selectedTrial.ANALYSIS_TIMESTAMP).toLocaleString()}
-                    </div>
-                  </div>
+                {/* Right Column - Org Data */}
+                <div className="w-3/5 overflow-y-auto">
+                  <OrgDataPanel orgData={orgData} loading={orgDataLoading} />
                 </div>
               </div>
             </DialogContent>

@@ -12,15 +12,26 @@ const Dialog = ({
   onOpenChange: (open: boolean) => void
   children: React.ReactNode
 }) => {
+  React.useEffect(() => {
+    if (open) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [open])
+
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div
         className="fixed inset-0 bg-black/50"
         onClick={() => onOpenChange(false)}
       />
-      <div className="relative z-50 w-full max-w-4xl max-h-[90vh] overflow-auto">
+      <div className="relative z-50 w-full max-w-[90vw] h-[90vh] overflow-hidden">
         {children}
       </div>
     </div>
@@ -34,7 +45,7 @@ const DialogContent = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "bg-white rounded-lg shadow-lg p-6 mx-4",
+      "bg-white rounded-lg shadow-lg overflow-hidden h-full flex flex-col",
       className
     )}
     {...props}
@@ -42,7 +53,7 @@ const DialogContent = React.forwardRef<
     {onClose && (
       <button
         onClick={onClose}
-        className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-gray-950 focus:ring-offset-2"
+        className="absolute right-6 top-6 z-10 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-gray-950 focus:ring-offset-2 bg-white shadow-sm p-1"
       >
         <X className="h-4 w-4" />
         <span className="sr-only">Close</span>
