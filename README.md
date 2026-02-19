@@ -1,6 +1,6 @@
 # 🔍 TrialSniffer
 
-A modern Next.js web application for sniffing out insights from Datadog trial organization data in Snowflake.
+A modern Next.js web application for sniffing out insights from Datadog trial conversions.
 
 ## Features
 
