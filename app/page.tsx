@@ -379,11 +379,8 @@ export default function Home() {
           </div>
           <div className="space-y-4">
             <div>
-              <label htmlFor="searchText" className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1.5">
+              <label htmlFor="searchText" className="text-sm font-medium text-gray-700 mb-1.5 block">
                 Search Trial Summaries
-                <Tooltip content="Trial summaries are generated via LLM analysis of RUM actions for successful conversions">
-                  <Info className="w-4 h-4 text-gray-400 hover:text-datadog-purple cursor-help" />
-                </Tooltip>
               </label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -392,7 +389,7 @@ export default function Home() {
                   value={searchText}
                   onChange={(e) => setSearchText(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  placeholder="Search for keywords in trial summaries..."
+                  placeholder="For mentions of keywords e.g. apm, logs, serverless, security, monitors"
                   className="pl-10"
                 />
               </div>
@@ -696,7 +693,12 @@ export default function Home() {
                   <div className="space-y-6">
                     {/* Trial Summary */}
                     <div>
-                      <h4 className="text-sm font-semibold text-gray-900 mb-2">Trial Summary</h4>
+                      <h4 className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-1.5">
+                        Trial Summary
+                        <Tooltip content="Trial summaries are generated via LLM analysis of RUM actions for successful conversions">
+                          <Info className="w-4 h-4 text-gray-400 hover:text-datadog-purple cursor-help" />
+                        </Tooltip>
+                      </h4>
                       <p className="text-sm text-gray-700 leading-relaxed">
                         {selectedTrial.TRIAL_SUMMARY}
                       </p>
