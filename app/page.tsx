@@ -745,7 +745,7 @@ export default function Home() {
                     <div>
                       <h4 className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-1.5">
                         Trial Summary
-                        <Tooltip content="Trial summaries are generated via LLM analysis of RUM actions across trial sessions">
+                        <Tooltip content="LLM summarization of RUM actions across trial sessions">
                           <Info className="w-4 h-4 text-gray-400 hover:text-datadog-purple cursor-help" />
                         </Tooltip>
                       </h4>
