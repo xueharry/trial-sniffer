@@ -77,22 +77,36 @@ export default function Home() {
   const [total, setTotal] = useState(0);
   const limit = 20;
 
-  const fetchTrials = async () => {
+  const fetchTrials = async (filters?: {
+    orgId?: string;
+    dateFrom?: string;
+    dateTo?: string;
+    valueMoments?: string[];
+    searchText?: string;
+    page?: number;
+  }) => {
     setLoading(true);
     setError(null);
 
+    const currentPage = filters?.page ?? page;
+    const currentOrgId = filters?.orgId ?? orgId;
+    const currentDateFrom = filters?.dateFrom ?? dateFrom;
+    const currentDateTo = filters?.dateTo ?? dateTo;
+    const currentValueMoments = filters?.valueMoments ?? valueMoments;
+    const currentSearchText = filters?.searchText ?? searchText;
+
     const params = new URLSearchParams({
       limit: limit.toString(),
-      offset: ((page - 1) * limit).toString(),
+      offset: ((currentPage - 1) * limit).toString(),
     });
 
-    if (orgId) params.append('orgId', orgId);
-    if (dateFrom) params.append('dateFrom', dateFrom);
-    if (dateTo) params.append('dateTo', dateTo);
-    if (valueMoments.length > 0) {
-      valueMoments.forEach(vm => params.append('valueMoments', vm));
+    if (currentOrgId) params.append('orgId', currentOrgId);
+    if (currentDateFrom) params.append('dateFrom', currentDateFrom);
+    if (currentDateTo) params.append('dateTo', currentDateTo);
+    if (currentValueMoments.length > 0) {
+      currentValueMoments.forEach(vm => params.append('valueMoments', vm));
     }
-    if (searchText) params.append('search', searchText);
+    if (currentSearchText) params.append('search', currentSearchText);
 
     try {
       const response = await fetch(`/api/trials?${params}`);
@@ -161,7 +175,14 @@ export default function Home() {
     setValueMoments([]);
     setSearchText('');
     setPage(1);
-    setTimeout(fetchTrials, 0);
+    fetchTrials({
+      orgId: '',
+      dateFrom: '',
+      dateTo: '',
+      valueMoments: [],
+      searchText: '',
+      page: 1,
+    });
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
