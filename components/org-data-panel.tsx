@@ -1,4 +1,5 @@
-import { Loader2, Copy } from 'lucide-react';
+import { Copy } from 'lucide-react';
+import { SkeletonSection, SkeletonTable } from './skeleton-loader';
 
 interface OrgDataPanelProps {
   orgData: any;
@@ -6,17 +7,6 @@ interface OrgDataPanelProps {
 }
 
 export function OrgDataPanel({ orgData, loading }: OrgDataPanelProps) {
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-datadog-purple mx-auto mb-2" />
-          <p className="text-sm text-gray-600">Loading organization data...</p>
-        </div>
-      </div>
-    );
-  }
-
   if (!orgData) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -78,7 +68,7 @@ export function OrgDataPanel({ orgData, loading }: OrgDataPanelProps) {
       {/* Account Overview Card */}
       <div className="bg-white rounded-lg border border-gray-200 p-4 space-y-4">
         {/* Org Information */}
-        <Section title="Organization Information" error={orgData.orgInfo?.error}>
+        <Section title="Organization Information" error={orgData.orgInfo?.error} loading={orgData.orgInfo?.loading}>
           {orgInfo ? (
             <div className="space-y-2 text-sm">
               <div className="flex items-center py-1 flex-wrap">
@@ -154,7 +144,7 @@ export function OrgDataPanel({ orgData, loading }: OrgDataPanelProps) {
         {/* Hosts and Billable Usage - Two Column */}
         <div className="grid grid-cols-2 gap-4">
           {/* Hosts */}
-          <Section title="Hosts" error={orgData.infraHosts?.error || orgData.cloudHosts?.error}>
+          <Section title="Hosts" error={orgData.infraHosts?.error || orgData.cloudHosts?.error} loading={orgData.infraHosts?.loading || orgData.cloudHosts?.loading}>
             <div className="text-sm space-y-1">
               <div className="flex py-1">
                 <span className="text-gray-600 mr-2">Infra:</span>
@@ -184,7 +174,7 @@ export function OrgDataPanel({ orgData, loading }: OrgDataPanelProps) {
           </Section>
 
           {/* Billable Usage */}
-          <Section title="Billable Product Usage" error={orgData.billableUsage?.error}>
+          <Section title="Billable Product Usage" error={orgData.billableUsage?.error} loading={orgData.billableUsage?.loading} skeletonType="table">
             {billableUsage.length > 0 ? (
               <div className="max-h-60 overflow-y-auto space-y-1">
                 {billableUsage.map((item: any, idx: number) => (
@@ -211,6 +201,8 @@ export function OrgDataPanel({ orgData, loading }: OrgDataPanelProps) {
           <Section
             title={`Dashboards Created (${dashboards.length})`}
             error={orgData.dashboards?.error}
+            loading={orgData.dashboards?.loading}
+            skeletonType="table"
           >
             {dashboards.length > 0 ? (
               <div className="max-h-60 overflow-y-auto">
@@ -232,6 +224,8 @@ export function OrgDataPanel({ orgData, loading }: OrgDataPanelProps) {
           <Section
             title={`Monitors Created (${monitors.length})`}
             error={orgData.monitors?.error}
+            loading={orgData.monitors?.loading}
+            skeletonType="table"
           >
             {monitors.length > 0 ? (
               <div className="max-h-60 overflow-y-auto">
@@ -257,6 +251,7 @@ export function OrgDataPanel({ orgData, loading }: OrgDataPanelProps) {
         <Section
           title={`Integrations Enabled (${integrations.length})`}
           error={orgData.integrations?.error}
+          loading={orgData.integrations?.loading}
         >
         {integrations.length > 0 ? (
           <div className="max-h-60 overflow-y-auto">
@@ -282,6 +277,8 @@ export function OrgDataPanel({ orgData, loading }: OrgDataPanelProps) {
         <Section
           title={`Top Pages (by Pageviews)`}
           error={orgData.pageviews?.error}
+          loading={orgData.pageviews?.loading}
+          skeletonType="table"
         >
           {pageviews.length > 0 ? (
             <div className="space-y-1">
@@ -306,6 +303,8 @@ export function OrgDataPanel({ orgData, loading }: OrgDataPanelProps) {
         <Section
           title={`Most Active Users (Top ${activeUsers.length})`}
           error={orgData.activeUsers?.error}
+          loading={orgData.activeUsers?.loading}
+          skeletonType="table"
         >
         {activeUsers.length > 0 ? (
           <div className="max-h-60 overflow-y-auto space-y-2">
@@ -336,16 +335,22 @@ export function OrgDataPanel({ orgData, loading }: OrgDataPanelProps) {
 function Section({
   title,
   children,
-  error
+  error,
+  loading,
+  skeletonType = 'section'
 }: {
   title: string;
   children: React.ReactNode;
   error?: string | null;
+  loading?: boolean;
+  skeletonType?: 'section' | 'table';
 }) {
   return (
     <div>
       <h3 className="font-semibold text-gray-900 mb-3">{title}</h3>
-      {error ? (
+      {loading ? (
+        skeletonType === 'table' ? <SkeletonTable /> : <SkeletonSection />
+      ) : error ? (
         <p className="text-sm text-red-600">Error: {error}</p>
       ) : (
         children

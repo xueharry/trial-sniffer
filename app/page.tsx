@@ -210,26 +210,76 @@ export default function Home() {
     // Check cache first
     if (orgDataCache.has(orgId)) {
       setOrgData(orgDataCache.get(orgId));
+      setOrgDataLoading(false);
       return;
     }
 
     setOrgDataLoading(true);
-    setOrgData(null);
+    // Initialize with empty loading state for each section
+    setOrgData({
+      orgInfo: { loading: true },
+      conversionTime: { loading: true },
+      arrData: { loading: true },
+      billableUsage: { loading: true },
+      infraHosts: { loading: true },
+      cloudHosts: { loading: true },
+      dashboards: { loading: true },
+      monitors: { loading: true },
+      integrations: { loading: true },
+      pageviews: { loading: true },
+      activeUsers: { loading: true },
+    });
 
     try {
       const response = await fetch(`/api/org-data/${orgId}`);
       if (!response.ok) {
         throw new Error('Failed to fetch org data');
       }
-      const data = await response.json();
-      setOrgData(data);
 
-      // Cache the result
-      setOrgDataCache(new Map(orgDataCache.set(orgId, data)));
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      const completeData: any = {};
+
+      if (!reader) {
+        throw new Error('No response body');
+      }
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n');
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = JSON.parse(line.slice(6));
+
+            if (data.type === 'data') {
+              // Update the specific section with data
+              completeData[data.key] = { data: data.data, error: null };
+              setOrgData((prev: any) => ({
+                ...prev,
+                [data.key]: { data: data.data, error: null },
+              }));
+            } else if (data.type === 'error') {
+              // Update the specific section with error
+              completeData[data.key] = { data: null, error: data.error };
+              setOrgData((prev: any) => ({
+                ...prev,
+                [data.key]: { data: null, error: data.error },
+              }));
+            } else if (data.type === 'done') {
+              // Cache the complete result
+              setOrgDataCache(new Map(orgDataCache.set(orgId, completeData)));
+              setOrgDataLoading(false);
+            }
+          }
+        }
+      }
     } catch (err) {
       console.error('Error fetching org data:', err);
       setOrgData({ error: 'Failed to load org data' });
-    } finally {
       setOrgDataLoading(false);
     }
   };
@@ -511,7 +561,7 @@ export default function Home() {
                   <TableHead>
                     <div className="flex items-center gap-1.5">
                       Trial Summary
-                      <Tooltip content="LLM-generated summaries of RUM actions for successful trial conversions">
+                      <Tooltip content="LLM-generated summaries of RUM actions across trial sessions">
                         <Info className="w-3.5 h-3.5 text-gray-400 hover:text-datadog-purple cursor-help" />
                       </Tooltip>
                     </div>
@@ -695,7 +745,7 @@ export default function Home() {
                     <div>
                       <h4 className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-1.5">
                         Trial Summary
-                        <Tooltip content="Trial summaries are generated via LLM analysis of RUM actions for successful conversions">
+                        <Tooltip content="Trial summaries are generated via LLM analysis of RUM actions across trial sessions">
                           <Info className="w-4 h-4 text-gray-400 hover:text-datadog-purple cursor-help" />
                         </Tooltip>
                       </h4>
