@@ -417,7 +417,7 @@ export default function Home() {
             </h1>
           </div>
           <p className="text-gray-600 ml-20">
-            Sniff out insights from successful Datadog trial conversions
+            Sniff out insights from Datadog trials to improve your onboarding
           </p>
         </div>
 
