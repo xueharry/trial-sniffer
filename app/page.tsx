@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Copy, Check, Info } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Copy, Check, Info, Sparkles } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 import {
   Table,
   TableBody,
@@ -56,6 +57,14 @@ export default function Home() {
   const [orgDataLoading, setOrgDataLoading] = useState(false);
   const [orgDataCache, setOrgDataCache] = useState<Map<number, any>>(new Map());
 
+  // Meta Summary
+  const [metaSummaryEnabled, setMetaSummaryEnabled] = useState(false);
+  const [metaSummaryOpen, setMetaSummaryOpen] = useState(false);
+  const [metaSummaryContent, setMetaSummaryContent] = useState('');
+  const [metaSummaryLoading, setMetaSummaryLoading] = useState(false);
+  const [metaSummaryMetadata, setMetaSummaryMetadata] = useState<{ trialCount: number; dateRange: string } | null>(null);
+  const [copiedSummary, setCopiedSummary] = useState(false);
+
   // Filters
   const [orgId, setOrgId] = useState('');
   const [dateFrom, setDateFrom] = useState('');
@@ -103,6 +112,21 @@ export default function Home() {
   useEffect(() => {
     fetchTrials();
   }, [page]);
+
+  // Check if meta-summary feature is enabled
+  useEffect(() => {
+    const checkMetaSummaryStatus = async () => {
+      try {
+        const response = await fetch('/api/meta-summary/status');
+        const data = await response.json();
+        setMetaSummaryEnabled(data.enabled);
+      } catch (err) {
+        console.error('Failed to check meta-summary status:', err);
+        setMetaSummaryEnabled(false);
+      }
+    };
+    checkMetaSummaryStatus();
+  }, []);
 
   // Keyboard navigation for modal
   useEffect(() => {
@@ -218,6 +242,77 @@ export default function Home() {
   const handleCloseModal = () => {
     setSelectedTrial(null);
     setSelectedTrialIndex(-1);
+  };
+
+  const handleGenerateSummary = async () => {
+    setMetaSummaryOpen(true);
+    setMetaSummaryLoading(true);
+    setMetaSummaryContent('');
+    setMetaSummaryMetadata(null);
+
+    try {
+      const response = await fetch('/api/meta-summary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          filters: {
+            orgId,
+            dateFrom,
+            dateTo,
+            valueMoments,
+            searchText,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate summary');
+      }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      if (!reader) {
+        throw new Error('No response body');
+      }
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n');
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = JSON.parse(line.slice(6));
+
+            if (data.type === 'metadata') {
+              setMetaSummaryMetadata({
+                trialCount: data.trialCount,
+                dateRange: data.dateRange,
+              });
+            } else if (data.type === 'content') {
+              setMetaSummaryContent((prev) => prev + data.text);
+            } else if (data.type === 'done') {
+              setMetaSummaryLoading(false);
+            } else if (data.type === 'error') {
+              throw new Error(data.error);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Meta summary error:', error);
+      setMetaSummaryContent('Failed to generate summary. Please try again.');
+      setMetaSummaryLoading(false);
+    }
+  };
+
+  const copySummary = () => {
+    navigator.clipboard.writeText(metaSummaryContent);
+    setCopiedSummary(true);
+    setTimeout(() => setCopiedSummary(false), 2000);
   };
 
   const totalPages = Math.ceil(total / limit);
@@ -345,11 +440,24 @@ export default function Home() {
         {/* Results Count */}
         {!loading && (
           <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <div className="text-sm text-gray-600">
                 Showing <span className="font-semibold">{trials.length}</span> of{' '}
                 <span className="font-semibold">{total}</span> successful conversions
               </div>
+              {metaSummaryEnabled && (
+                <Tooltip content="Generate a LLM meta-summary for the filtered trial summaries">
+                  <Button
+                    onClick={handleGenerateSummary}
+                    variant="outline"
+                    size="sm"
+                    className="border-datadog-purple text-datadog-purple hover:bg-purple-50"
+                  >
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    Generate Meta-Summary
+                  </Button>
+                </Tooltip>
+              )}
             </div>
             {totalPages > 1 && (
               <div className="text-sm text-gray-600">
@@ -638,6 +746,67 @@ export default function Home() {
               </div>
             </DialogContent>
           )}
+        </Dialog>
+
+        {/* Meta Summary Dialog */}
+        <Dialog open={metaSummaryOpen} onOpenChange={setMetaSummaryOpen}>
+          <DialogContent onClose={() => setMetaSummaryOpen(false)}>
+            <div className="p-6 pr-16 max-h-[80vh] flex flex-col">
+              <DialogHeader>
+                <div className="flex items-center justify-between">
+                  <DialogTitle className="flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-datadog-purple" />
+                    Trial Conversion Summary
+                  </DialogTitle>
+                  {!metaSummaryLoading && metaSummaryContent && (
+                    <Button
+                      onClick={copySummary}
+                      variant="outline"
+                      size="sm"
+                      className="h-8"
+                    >
+                      {copiedSummary ? (
+                        <>
+                          <Check className="w-4 h-4 mr-1 text-green-600" />
+                          Copied
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-4 h-4 mr-1" />
+                          Copy
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </div>
+                {metaSummaryMetadata && (
+                  <DialogDescription>
+                    Analysis of {metaSummaryMetadata.trialCount} trials • {metaSummaryMetadata.dateRange}
+                  </DialogDescription>
+                )}
+              </DialogHeader>
+
+              <div className="flex-1 overflow-y-auto mt-4">
+                {metaSummaryLoading && !metaSummaryContent && (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="text-center">
+                      <div className="w-12 h-12 border-4 border-datadog-purple border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                      <p className="text-sm text-gray-600">Analyzing trial patterns...</p>
+                    </div>
+                  </div>
+                )}
+
+                {metaSummaryContent && (
+                  <div className="prose prose-gray max-w-none prose-headings:text-gray-900 prose-headings:font-semibold prose-h2:text-lg prose-h3:text-base prose-p:text-gray-700 prose-p:leading-relaxed prose-strong:text-gray-900 prose-strong:font-semibold prose-ul:text-gray-700 prose-ol:text-gray-700 prose-li:text-gray-700 prose-li:my-1">
+                    <ReactMarkdown>{metaSummaryContent}</ReactMarkdown>
+                    {metaSummaryLoading && (
+                      <span className="inline-block w-2 h-4 bg-datadog-purple animate-pulse ml-1"></span>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </DialogContent>
         </Dialog>
       </div>
     </div>

@@ -12,12 +12,14 @@ A modern Next.js web application for sniffing out insights from Datadog trial co
 - 🔒 **SSO Authentication**: Secure external browser authentication via Okta
 - ⚡ **Fast Performance**: Efficient pagination and data loading
 - 📄 **Detailed Insights**: Click any row to view full analysis in a modal
+- ✨ **AI Meta-Summaries** (Optional): Generate LLM-powered insights across filtered trials
 
 ## Prerequisites
 
 - Node.js 18+ installed
 - Access to Snowflake with SSO authentication for the `REPORTING.GENERAL.FACT_TRIAL_ANALYSIS` table
 - Datadog email address for Snowflake SSO
+- (Optional) Anthropic API key for AI meta-summaries
 
 ## Setup
 
@@ -49,6 +51,48 @@ A modern Next.js web application for sniffing out insights from Datadog trial co
    - Navigate to [http://localhost:3000](http://localhost:3000)
    - When you first load data, a browser window will open for Okta/SSO authentication
    - Complete the authentication, then the app will load your data
+
+## Optional: AI Meta-Summaries
+
+TrialSniffer can generate AI-powered meta-summaries that analyze patterns across multiple trials using Claude by Anthropic. This feature is **completely optional** and the app works perfectly fine without it.
+
+### Enable Meta-Summaries
+
+1. **Get an Anthropic API Key**
+   - Sign up at [console.anthropic.com](https://console.anthropic.com)
+   - Create an API key
+
+2. **Add to Environment**
+
+   Add the following to your `.env.local` file:
+   ```env
+   # Optional: Enable AI meta-summaries
+   ANTHROPIC_API_KEY=sk-ant-api03-...
+
+   # Optional: Model selection (defaults to Sonnet 4.5)
+   # ANTHROPIC_MODEL=claude-sonnet-4-5-20250929
+   ```
+
+   **Model Options:**
+   - `claude-sonnet-4-5-20250929` (default) - Best balance of quality and speed
+   - `claude-opus-4-6` - Highest quality, slower, more expensive
+   - `claude-haiku-4-5-20251001` - Fastest, cheapest (~$0.01 per summary)
+
+3. **Restart the Dev Server**
+   ```bash
+   npm run dev
+   ```
+
+The "Generate Meta-Summary" button will automatically appear next to the results count once the API key is detected.
+
+### Using Meta-Summaries
+
+- Apply any filters (date range, value moments, search terms)
+- Click the "Generate Meta-Summary" button next to the results count
+- Watch as Claude analyzes the matching trials in real-time
+- Copy the summary for use in reports or presentations
+
+**Cost**: Uses Claude Sonnet 4.5 by default. Analyzing 50 trials typically costs a few cents per summary. Switch to Haiku 4.5 for faster/cheaper results (~$0.01 per summary).
 
 ## Usage
 
